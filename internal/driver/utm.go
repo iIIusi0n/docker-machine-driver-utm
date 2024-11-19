@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -19,11 +20,9 @@ import (
 	_ "embed"
 )
 
-//go:embed boot2docker.iso
-var defaultBoot2DockerIso []byte
-
 const (
 	IsoFilename    = "boot2docker.iso"
+	B2dURL         = "https://github.com/iIIusi0n/docker-machine-driver-utm/releases/download/v1.0.0/boot2docker.iso"
 	DefaultSSHUser = "docker"
 )
 
@@ -62,7 +61,7 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	if err := os.WriteFile(d.ResolveStorePath(IsoFilename), defaultBoot2DockerIso, 0644); err != nil {
+	if err := downloadBoot2DockerISO(d.ResolveStorePath(IsoFilename)); err != nil {
 		return err
 	}
 
@@ -415,4 +414,19 @@ func createDiskImage(dest string, size int, r io.Reader) error {
 	f.Seek(sizeBytes-1, 0)
 	f.Write([]byte{0})
 	return f.Close()
+}
+
+func downloadBoot2DockerISO(path string) error {
+	resp, err := http.Get(B2dURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
 }
